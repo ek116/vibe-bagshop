@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>L'AURA - Premium Leather Bags</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Load OrbitControls for 3D interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Load GLTFLoader to load the 3D model (though we will generate a procedural one if needed, it's good practice) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Google Fonts for premium look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --brand-dark: #1a1a1a;
+            --brand-light: #fdfbf7;
+            --brand-gold: #c5a880;
+            --brand-gray: #4a4a4a;
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: var(--brand-light);
+            color: var(--brand-dark);
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4, h5, .serif-font {
+            font-family: 'Playfair Display', serif;
+        }
+
+        /* Navbar transition */
+        #navbar {
+            transition: all 0.3s ease-in-out;
+        }
+        #navbar.scrolled {
+            background-color: rgba(253, 251, 247, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            padding-top: 1rem;
+            padding-bottom: 1rem;
+        }
+
+        /* 3D Canvas container */
+        #canvas-container {
+            width: 100%;
+            height: 60vh;
+            min-height: 400px;
+            cursor: grab;
+            position: relative;
+        }
+        
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 3px solid rgba(197, 168, 128, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid var(--brand-gold);
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* Hide scrollbar for slider but allow scrolling */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Product Card Hover Effect */
+        .product-card {
+            transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+        }
+        .product-image-container img {
+            transition: transform 0.8s ease;
+        }
+        .product-card:hover .product-image-container img {
+            transform: scale(1.05);
+        }
+
+        /* Color selection buttons */
+        .color-btn {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .color-btn.active::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border: 1px solid var(--brand-gold);
+            border-radius: 50%;
+        }
+
+        /* Custom Button */
+        .btn-primary {
+            background-color: var(--brand-dark);
+            color: white;
+            transition: background-color 0.3s, color 0.3s;
+            border: 1px solid var(--brand-dark);
+        }
+        .btn-primary:hover {
+            background-color: transparent;
+            color: var(--brand-dark);
+        }
+        
+        .btn-outline {
+            border: 1px solid var(--brand-dark);
+            color: var(--brand-dark);
+            transition: all 0.3s;
+        }
+        .btn-outline:hover {
+            background-color: var(--brand-dark);
+            color: white;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav id="navbar" class="fixed w-full z-50 py-6 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center relative">
+            
+            <!-- Mobile Menu Button & Logo (Left) -->
+            <div class="flex items-center gap-4">
+                <div class="md:hidden">
+                    <button type="button" class="text-gray-800 hover:text-gray-600 focus:outline-none">
+                        <i data-lucide="menu" class="w-6 h-6"></i>
+                    </button>
+                </div>
+                <a href="#" class="serif-font text-3xl font-bold tracking-wider">
+                    L'AURA
+                </a>
+            </div>
+
+            <!-- Center Navigation (Desktop) -->
+            <div class="hidden md:flex space-x-8 absolute left-1/2 transform -translate-x-1/2">
+                <a href="#" class="text-sm uppercase tracking-widest hover:text-[#c5a880] transition-colors">Collection</a>
+                <a href="#" class="text-sm uppercase tracking-widest hover:text-[#c5a880] transition-colors">Bespoke</a>
+                <a href="#" class="text-sm uppercase tracking-widest hover:text-[#c5a880] transition-colors">Brand Story</a>
+            </div>
+
+            <!-- Right Icons -->
+            <div class="flex items-center justify-end space-x-6">
+                <a href="#" class="text-gray-800 hover:text-[#c5a880] transition-colors hidden sm:block">
+                    <i data-lucide="search" class="w-5 h-5"></i>
+                </a>
+                <a href="#" class="text-gray-800 hover:text-[#c5a880] transition-colors hidden sm:block">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                </a>
+                <a href="#" class="text-gray-800 hover:text-[#c5a880] transition-colors relative">
+                    <i data-lucide="shopping-bag" class="w-5 h-5"></i>
+                    <span class="absolute -top-2 -right-2 bg-[#c5a880] text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">2</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section class="pt-24 lg:pt-32 pb-16 bg-[#f8f6f0]">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                
+                <div class="text-center mb-8 md:mb-12">
+                    <p class="text-sm uppercase tracking-[0.2em] text-[#c5a880] mb-3">MD's Pick / Bespoke Collection</p>
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl mb-4">The Signature Tote</h1>
+                    <p class="text-gray-500 max-w-2xl mx-auto leading-relaxed">
+                        최고급 이탈리안 송아지 가죽으로 제작된 당신만의 시그니처 핏. <br class="hidden md:block">
+                        나만의 컬러를 선택하고, 일상 속 품격을 더해보세요.
+                    </p>
+                </div>
+
+                <div class="flex flex-col lg:flex-row items-center justify-between gap-12 lg:gap-8">
+                    <!-- Left: Details (Desktop) -->
+                    <div class="hidden lg:flex flex-col w-1/4 space-y-12 pl-4">
+                        <div>
+                            <h3 class="serif-font text-xl mb-2">Craftsmanship</h3>
+                            <p class="text-sm text-gray-500 leading-relaxed">수십 년 경력의 장인이 한 땀 한 땀 수작업으로 완성하는 디테일의 차이.</p>
+                        </div>
+                        <div>
+                            <h3 class="serif-font text-xl mb-2">Premium Leather</h3>
+                            <p class="text-sm text-gray-500 leading-relaxed">시간이 지날수록 당신의 삶에 맞게 길들여지는 최상급 베지터블 레더.</p>
+                        </div>
+                    </div>
+
+                    <!-- Center: 3D Canvas Showcase -->
+                    <div class="w-full lg:w-2/4 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative">
+                        <div id="canvas-container">
+                            <div class="loading-spinner" id="loading-spinner"></div>
+                            <!-- 3D Scene will be injected here -->
+                        </div>
+                        <div class="absolute bottom-4 left-0 w-full text-center pointer-events-none">
+                            <p class="text-xs text-gray-400 tracking-widest uppercase">Drag to Rotate</p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Customization & CTA -->
+                    <div class="w-full lg:w-1/4 flex flex-col space-y-8 pr-4">
+                        
+                        <div>
+                            <h2 class="serif-font text-3xl mb-2">Signature Tote</h2>
+                            <p class="text-xl text-gray-800 font-medium">₩ 890,000</p>
+                        </div>
+
+                        <div>
+                            <p class="text-sm font-semibold uppercase tracking-wider mb-4">Select Color</p>
+                            <div class="flex space-x-4">
+                                <!-- Colors hex values -->
+                                <button class="color-btn active w-8 h-8 rounded-full bg-[#1a1a1a] shadow-md" data-color="#1a1a1a" aria-label="Noir Black"></button>
+                                <button class="color-btn w-8 h-8 rounded-full bg-[#8b5a2b] shadow-md" data-color="#8b5a2b" aria-label="Classic Camel"></button>
+                                <button class="color-btn w-8 h-8 rounded-full bg-[#5a2e2e] shadow-md" data-color="#5a2e2e" aria-label="Burgundy Wine"></button>
+                                <button class="color-btn w-8 h-8 rounded-full bg-[#e3dac9] shadow-md" data-color="#e3dac9" aria-label="Cream Ivory"></button>
+                            </div>
+                            <p class="text-sm text-gray-500 mt-3" id="color-name">Noir Black</p>
+                        </div>
+
+                        <div class="space-y-3 pt-4 border-t border-gray-200">
+                            <button class="btn-primary w-full py-4 px-6 text-sm uppercase tracking-widest font-semibold flex justify-center items-center gap-2">
+                                <i data-lucide="shopping-bag" class="w-4 h-4"></i> Add to Cart
+                            </button>
+                            <button class="w-full py-4 px-6 text-sm uppercase tracking-widest font-semibold border-b border-transparent hover:border-black transition-colors text-center">
+                                View Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-20 bg-white">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-end mb-10">
+                    <div>
+                        <h2 class="serif-font text-3xl md:text-4xl">Best Sellers</h2>
+                        <p class="text-gray-500 mt-2">변치 않는 우아함, 가장 사랑받는 컬렉션</p>
+                    </div>
+                    <div class="hidden md:flex space-x-2">
+                        <button id="slider-prev" class="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                            <i data-lucide="chevron-left" class="w-5 h-5 text-gray-600"></i>
+                        </button>
+                        <button id="slider-next" class="w-10 h-10 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                            <i data-lucide="chevron-right" class="w-5 h-5 text-gray-600"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slider Container -->
+                <div class="relative">
+                    <div id="product-slider" class="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar space-x-6 pb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        
+                        <!-- Product 1 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1553062407-98eeb64c6a62?auto=format&fit=crop&w=800&q=80" alt="The Minimal Briefcase" class="w-full h-full object-cover object-center">
+                                <div class="absolute top-3 left-3 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider">New</div>
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">The Minimal Briefcase</h3>
+                                    <p class="text-sm text-gray-500">Noir Black</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 950,000</p>
+                            </div>
+                        </div>
+
+                        <!-- Product 2 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1594223274512-ad4803739b7c?auto=format&fit=crop&w=800&q=80" alt="Everyday Crossbody" class="w-full h-full object-cover object-center">
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">Everyday Crossbody</h3>
+                                    <p class="text-sm text-gray-500">Classic Camel</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 580,000</p>
+                            </div>
+                        </div>
+
+                        <!-- Product 3 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1591561954557-26941169b49e?q=80&w=800&auto=format&fit=crop" alt="Executive Hobo Bag" class="w-full h-full object-cover object-center">
+                                <div class="absolute top-3 left-3 bg-[#c5a880] text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider">Best</div>
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">Executive Hobo Bag</h3>
+                                    <p class="text-sm text-gray-500">Olive Green</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 720,000</p>
+                            </div>
+                        </div>
+
+                        <!-- Product 4 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1548036328-c9fa89d128fa?q=80&w=800&auto=format&fit=crop" alt="Structured Satchel" class="w-full h-full object-cover object-center">
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">Structured Satchel</h3>
+                                    <p class="text-sm text-gray-500">Burgundy Wine</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 810,000</p>
+                            </div>
+                        </div>
+
+                        <!-- Product 5 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1600857062241-98e5dba7f214?q=80&w=800&auto=format&fit=crop" alt="Weekend Duffel" class="w-full h-full object-cover object-center">
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">Weekend Duffel</h3>
+                                    <p class="text-sm text-gray-500">Deep Navy</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 1,200,000</p>
+                            </div>
+                        </div>
+
+                        <!-- Product 6 -->
+                        <div class="product-card min-w-[280px] w-[280px] md:min-w-[320px] md:w-[320px] flex-shrink-0 snap-start cursor-pointer group">
+                            <div class="product-image-container relative bg-[#f4f4f4] aspect-[4/5] overflow-hidden mb-4">
+                                <img src="https://images.unsplash.com/photo-1598532163257-ae3c6b2524b6?q=80&w=800&auto=format&fit=crop" alt="Mini Envelope Clutch" class="w-full h-full object-cover object-center">
+                                <div class="absolute bottom-4 right-4 bg-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                                    <i data-lucide="heart" class="w-5 h-5 text-gray-800 hover:text-red-500 transition-colors"></i>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-lg mb-1">Mini Envelope Clutch</h3>
+                                    <p class="text-sm text-gray-500">Cream Ivory</p>
+                                </div>
+                                <p class="font-medium text-lg">₩ 450,000</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- More Button -->
+                <div class="mt-12 text-center">
+                    <button class="btn-outline px-10 py-4 text-sm uppercase tracking-widest font-semibold inline-flex items-center gap-2">
+                        View All Collections <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="py-24 relative overflow-hidden bg-black text-white">
+            <!-- Background Image with Overlay -->
+            <div class="absolute inset-0 z-0">
+                <img src="https://images.unsplash.com/photo-1563212046-24f46927a3c3?q=80&w=2000&auto=format&fit=crop" alt="Leather workshop" class="w-full h-full object-cover opacity-40">
+            </div>
+            
+            <div class="relative z-10 max-w-4xl mx-auto px-4 text-center">
+                <i data-lucide="scissors" class="w-8 h-8 mx-auto mb-6 text-[#c5a880]"></i>
+                <h2 class="serif-font text-3xl md:text-5xl mb-6 leading-tight">"A bag is not just an accessory; it is a companion that carries the story of your life."</h2>
+                <p class="text-gray-300 text-lg md:text-xl font-light mb-10">
+                    프로페셔널한 그녀의 일상을 완벽하게 서포트하는, 타협 없는 퀄리티.
+                </p>
+                <button class="border border-[#c5a880] text-[#c5a880] hover:bg-[#c5a880] hover:text-white transition-colors px-8 py-3 text-sm uppercase tracking-widest">
+                    Discover Our Craft
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-[#1a1a1a] text-white pt-20 pb-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 border-b border-gray-800 pb-16">
+                
+                <div class="col-span-1 md:col-span-1">
+                    <a href="#" class="serif-font text-3xl font-bold tracking-wider mb-6 block">L'AURA</a>
+                    <p class="text-gray-400 text-sm leading-relaxed mb-6">
+                        프리미엄 레더와 장인정신이 만나 탄생한,<br>
+                        당신만을 위한 비스포크 컬렉션.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white"><i data-lucide="instagram" class="w-5 h-5"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i data-lucide="facebook" class="w-5 h-5"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white"><i data-lucide="twitter" class="w-5 h-5"></i></a>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="text-sm uppercase tracking-widest font-semibold mb-6">Shop</h4>
+                    <ul class="space-y-3 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-[#c5a880]">All Bags</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Totes</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Crossbody</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Clutches</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Bespoke Order</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-sm uppercase tracking-widest font-semibold mb-6">Support</h4>
+                    <ul class="space-y-3 text-sm text-gray-400">
+                        <li><a href="#" class="hover:text-[#c5a880]">Contact Us</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Shipping & Returns</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">Care Guide</a></li>
+                        <li><a href="#" class="hover:text-[#c5a880]">FAQ</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h4 class="text-sm uppercase tracking-widest font-semibold mb-6">Newsletter</h4>
+                    <p class="text-gray-400 text-sm mb-4">신상품 소식과 프라이빗 초대장을 받아보세요.</p>
+                    <form class="flex">
+                        <input type="email" placeholder="Your email address" class="bg-transparent border-b border-gray-600 focus:border-[#c5a880] py-2 px-0 text-sm w-full focus:outline-none transition-colors text-white">
+                        <button type="submit" class="text-sm font-semibold uppercase tracking-widest ml-4 hover:text-[#c5a880] transition-colors">Subscribe</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+                <p>&copy; 2026 L'AURA. All rights reserved.</p>
+                <div class="space-x-4 mt-4 md:mt-0">
+                    <a href="#" class="hover:text-white">Privacy Policy</a>
+                    <a href="#" class="hover:text-white">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // --- Navbar Scroll Effect ---
+        window.addEventListener('scroll', () => {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        // --- Product Slider Controls ---
+        const slider = document.getElementById('product-slider');
+        const prevBtn = document.getElementById('slider-prev');
+        const nextBtn = document.getElementById('slider-next');
+
+        if(prevBtn && nextBtn && slider) {
+            const scrollAmount = 340; // width + gap approx
+            
+            prevBtn.addEventListener('click', () => {
+                slider.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+            });
+
+            nextBtn.addEventListener('click', () => {
+                slider.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+            });
+        }
+
+        // --- THREE.JS 3D Bag Configuration ---
+        const init3D = () => {
+            const container = document.getElementById('canvas-container');
+            const spinner = document.getElementById('loading-spinner');
+            
+            // Setup Scene
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xffffff); // White background to blend with div
+            
+            // Setup Camera
+            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 1.5, 4);
+
+            // Setup Renderer
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            // renderer.outputEncoding = THREE.sRGBEncoding; // r128 syntax
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enablePan = false;
+            controls.minDistance = 2;
+            controls.maxDistance = 6;
+            controls.minPolarAngle = Math.PI / 4; // limit looking from top
+            controls.maxPolarAngle = Math.PI / 2 + 0.1; // limit looking from below
+
+            // Lighting to make it look premium
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(5, 5, 5);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+            
+            const fillLight = new THREE.DirectionalLight(0xebebeb, 0.4);
+            fillLight.position.set(-5, 3, -5);
+            scene.add(fillLight);
+
+            // Base platform for shadow
+            const planeGeometry = new THREE.PlaneGeometry(10, 10);
+            const planeMaterial = new THREE.ShadowMaterial({ opacity: 0.1 });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.rotation.x = -Math.PI / 2;
+            plane.position.y = -0.5;
+            plane.receiveShadow = true;
+            scene.add(plane);
+
+            let bagModel;
+            let bagMaterial;
+
+            // Create a procedural fallback bag group in case the glb file is missing
+            const createProceduralFallbackBag = () => {
+                const group = new THREE.Group();
+                
+                // Bag Body
+                const bodyGeo = new THREE.BoxGeometry(1.2, 1.0, 0.6);
+                const mat = new THREE.MeshStandardMaterial({ 
+                    color: 0x1a1a1a, 
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                bagMaterial = mat;
+                
+                const body = new THREE.Mesh(bodyGeo, mat);
+                body.castShadow = true;
+                body.receiveShadow = true;
+                group.add(body);
+
+                // Handle
+                const handleCurve = new THREE.QuadraticBezierCurve3(
+                    new THREE.Vector3(-0.4, 0.5, 0),
+                    new THREE.Vector3(0, 1.2, 0),
+                    new THREE.Vector3(0.4, 0.5, 0)
+                );
+                const tubeGeo = new THREE.TubeGeometry(handleCurve, 20, 0.04, 8, false);
+                const handleMat = new THREE.MeshStandardMaterial({ color: 0xc5a880, metalness: 0.8, roughness: 0.2 });
+                const handle = new THREE.Mesh(tubeGeo, handleMat);
+                handle.castShadow = true;
+                group.add(handle);
+
+                // Golden Clasp
+                const claspGeo = new THREE.BoxGeometry(0.2, 0.1, 0.1);
+                const claspMat = new THREE.MeshStandardMaterial({ color: 0xc5a880, metalness: 0.9, roughness: 0.1 });
+                const clasp = new THREE.Mesh(claspGeo, claspMat);
+                clasp.position.set(0, 0, 0.31);
+                group.add(clasp);
+
+                group.position.set(0, 0, 0);
+                scene.add(group);
+                bagModel = group;
+                spinner.style.display = 'none';
+            };
+
+            const loader = new THREE.GLTFLoader();
+            const modelPath = 'assets/tote-bag-3d.glb'; // Replace with your actual file path when ready
+
+            // Check if model path is a placeholder or load with error handling
+            if (modelPath.includes('assets/tote-bag-3d.glb')) {
+                // Use the procedural fallback immediately so the app runs cleanly without network errors
+                createProceduralFallbackBag();
+            } else {
+                loader.load(
+                    modelPath, 
+                    function (gltf) {
+                        bagModel = gltf.scene;
+                        bagModel.scale.set(1, 1, 1); 
+                        bagModel.position.set(0, -0.5, 0); 
+                        bagModel.rotation.y = -Math.PI / 6;
+
+                        bagModel.traverse((child) => {
+                            if (child.isMesh) {
+                                child.castShadow = true;
+                                child.receiveShadow = true;
+                                if (!bagMaterial) {
+                                    bagMaterial = child.material; 
+                                }
+                            }
+                        });
+
+                        scene.add(bagModel);
+                        spinner.style.display.none = true;
+                        spinner.style.display = 'none';
+                    },
+                    undefined,
+                    function (error) {
+                        console.warn('GLB load failed, falling back to procedural model:', error);
+                        createProceduralFallbackBag();
+                    }
+                );
+            }
+
+            // --- Animation Loop ---
+            const animate = function () {
+                requestAnimationFrame(animate);
+                controls.update();
+                
+                // GLTF 모델이 로드된 후에만 둥둥 떠다니는 애니메이션 적용
+                if (bagModel) {
+                    bagModel.position.y = Math.sin(Date.now() * 0.001) * 0.05 - 0.5;
+                }
+
+                renderer.render(scene, camera);
+            };
+
+            // Start animation
+            animate();
+
+            // --- Window Resize Handling ---
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            // --- Color Change Logic ---
+            const colorButtons = document.querySelectorAll('.color-btn');
+            const colorNameDisplay = document.getElementById('color-name');
+
+            const colorNames = {
+                '#1a1a1a': 'Noir Black',
+                '#8b5a2b': 'Classic Camel',
+                '#5a2e2e': 'Burgundy Wine',
+                '#e3dac9': 'Cream Ivory'
+            };
+
+            colorButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    // Update Active State on UI
+                    colorButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    // Get color hex
+                    const hexColor = btn.getAttribute('data-color');
+                    
+                    // Update Text
+                    colorNameDisplay.textContent = colorNames[hexColor];
+
+                    // Animate 3D Material Color Change
+                    const targetColor = new THREE.Color(hexColor);
+                    
+                    // Simple Tweening using requestAnimationFrame
+                    let tweenDuration = 500; // ms
+                    let startTime = Date.now();
+                    const startColor = bagMaterial.color.clone();
+
+                    const changeColor = () => {
+                        let elapsed = Date.now() - startTime;
+                        let progress = Math.min(elapsed / tweenDuration, 1);
+                        
+                        // Ease out cubic
+                        let easeProgress = 1 - Math.pow(1 - progress, 3);
+                        
+                        bagMaterial.color.lerpColors(startColor, targetColor, easeProgress);
+
+                        if (progress < 1) {
+                            requestAnimationFrame(changeColor);
+                        }
+                    };
+                    changeColor();
+                });
+            });
+        };
+
+        // Initialize Three.js after window loads
+        window.onload = init3D;
+
+    </script>
+</body>
+</html>
