@@ -211,13 +211,22 @@
                     </div>
 
                     <!-- Center: 3D Canvas Showcase -->
-                    <div class="w-full lg:w-2/4 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative">
+                    <div class="w-full lg:w-2/4 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative group">
+                        
+                        <!-- 3D Carousel Navigation (Left/Right) -->
+                        <button id="md-prev" class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-[#c5a880] transition-colors z-10 opacity-0 group-hover:opacity-100 group-hover:text-white">
+                            <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                        </button>
+                        <button id="md-next" class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-[#c5a880] transition-colors z-10 opacity-0 group-hover:opacity-100 group-hover:text-white">
+                            <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                        </button>
+
                         <div id="canvas-container">
                             <div class="loading-spinner" id="loading-spinner"></div>
                             <!-- 3D Scene will be injected here -->
                         </div>
-                        <div class="absolute bottom-4 left-0 w-full text-center pointer-events-none">
-                            <p class="text-xs text-gray-400 tracking-widest uppercase">Drag to Rotate</p>
+                        <div class="absolute bottom-4 left-0 w-full text-center pointer-events-none z-10">
+                            <p class="text-xs text-gray-400 tracking-widest uppercase bg-white/50 inline-block px-3 py-1 rounded-full">Drag to Rotate</p>
                         </div>
                     </div>
 
@@ -225,8 +234,8 @@
                     <div class="w-full lg:w-1/4 flex flex-col space-y-8 pr-4">
                         
                         <div>
-                            <h2 class="serif-font text-3xl mb-2">Signature Tote</h2>
-                            <p class="text-xl text-gray-800 font-medium">₩ 890,000</p>
+                            <h2 id="md-product-title" class="serif-font text-3xl mb-2">Signature Tote</h2>
+                            <p id="md-product-price" class="text-xl text-gray-800 font-medium">₩ 890,000</p>
                         </div>
 
                         <div>
@@ -507,7 +516,7 @@
             
             // Setup Scene
             const scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xffffff); // White background to blend with div
+            scene.background = new THREE.Color(0xffffff);
             
             // Setup Camera
             const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
@@ -519,7 +528,6 @@
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            // renderer.outputEncoding = THREE.sRGBEncoding; // r128 syntax
             container.appendChild(renderer.domElement);
 
             // Controls
@@ -529,10 +537,10 @@
             controls.enablePan = false;
             controls.minDistance = 2;
             controls.maxDistance = 6;
-            controls.minPolarAngle = Math.PI / 4; // limit looking from top
-            controls.maxPolarAngle = Math.PI / 2 + 0.1; // limit looking from below
+            controls.minPolarAngle = Math.PI / 4; 
+            controls.maxPolarAngle = Math.PI / 2 + 0.1; 
 
-            // Lighting to make it look premium
+            // Lighting
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
             scene.add(ambientLight);
 
@@ -556,17 +564,43 @@
             plane.receiveShadow = true;
             scene.add(plane);
 
-            let bagModel;
-            let bagMaterial;
+            // --- Carousel & Products Data ---
+            const mdProducts = [
+                { name: 'Signature Tote', price: '₩ 890,000', path: 'assets/tote-bag-3d.glb', type: 'tote' },
+                { name: 'Classic Handbag', price: '₩ 750,000', path: 'assets/hand-bag-3d.glb', type: 'handbag' }
+            ];
+            let currentProductIndex = 0;
+            // Get initial selected color
+            let currentHexColor = document.querySelector('.color-btn.active').getAttribute('data-color');
+            let bagModel = null;
+            let bagMaterial = null;
 
-            // Create a procedural fallback bag group in case the glb file is missing
-            const createProceduralFallbackBag = () => {
+            const titleEl = document.getElementById('md-product-title');
+            const priceEl = document.getElementById('md-product-price');
+            const loader = new THREE.GLTFLoader();
+
+            // Clear previous model from scene
+            const clearCurrentModel = () => {
+                if (bagModel) {
+                    scene.remove(bagModel);
+                    bagModel = null;
+                    bagMaterial = null;
+                }
+            };
+
+            // Procedural fallback bag (changes shape based on type)
+            const createProceduralFallbackBag = (type) => {
                 const group = new THREE.Group();
                 
-                // Bag Body
-                const bodyGeo = new THREE.BoxGeometry(1.2, 1.0, 0.6);
+                let bodyGeo;
+                if (type === 'handbag') {
+                    bodyGeo = new THREE.BoxGeometry(1.4, 0.8, 0.5); // Wider, shorter
+                } else {
+                    bodyGeo = new THREE.BoxGeometry(1.2, 1.0, 0.6); // Tall tote
+                }
+
                 const mat = new THREE.MeshStandardMaterial({ 
-                    color: 0x1a1a1a, 
+                    color: new THREE.Color(currentHexColor), 
                     roughness: 0.4,
                     metalness: 0.1
                 });
@@ -580,7 +614,7 @@
                 // Handle
                 const handleCurve = new THREE.QuadraticBezierCurve3(
                     new THREE.Vector3(-0.4, 0.5, 0),
-                    new THREE.Vector3(0, 1.2, 0),
+                    new THREE.Vector3(0, type === 'handbag' ? 1.0 : 1.2, 0),
                     new THREE.Vector3(0.4, 0.5, 0)
                 );
                 const tubeGeo = new THREE.TubeGeometry(handleCurve, 20, 0.04, 8, false);
@@ -593,7 +627,7 @@
                 const claspGeo = new THREE.BoxGeometry(0.2, 0.1, 0.1);
                 const claspMat = new THREE.MeshStandardMaterial({ color: 0xc5a880, metalness: 0.9, roughness: 0.1 });
                 const clasp = new THREE.Mesh(claspGeo, claspMat);
-                clasp.position.set(0, 0, 0.31);
+                clasp.position.set(0, 0, type === 'handbag' ? 0.26 : 0.31);
                 group.add(clasp);
 
                 group.position.set(0, 0, 0);
@@ -602,53 +636,79 @@
                 spinner.style.display = 'none';
             };
 
-            const loader = new THREE.GLTFLoader();
-            const modelPath = 'assets/tote-bag-3d.glb'; 
+            // Load Model function
+            const loadModel = (index) => {
+                spinner.style.display = 'block';
+                clearCurrentModel();
 
-            try {
-                // 로컬 경로의 3D 모델을 불러옵니다.
-                loader.load(
-                    modelPath, 
-                    function (gltf) {
-                        bagModel = gltf.scene;
-                        
-                        // 모델의 크기와 위치 설정 (모델 크기에 따라 scale 값을 조절할 수 있습니다)
-                        bagModel.scale.set(1, 1, 1); 
-                        bagModel.position.set(0, -0.5, 0); 
-                        bagModel.rotation.y = -Math.PI / 6;
+                const product = mdProducts[index];
+                
+                // Update UI text smoothly
+                titleEl.style.opacity = 0;
+                priceEl.style.opacity = 0;
+                setTimeout(() => {
+                    titleEl.textContent = product.name;
+                    priceEl.textContent = product.price;
+                    titleEl.style.transition = "opacity 0.3s";
+                    priceEl.style.transition = "opacity 0.3s";
+                    titleEl.style.opacity = 1;
+                    priceEl.style.opacity = 1;
+                }, 150);
 
-                        bagModel.traverse((child) => {
-                            if (child.isMesh) {
-                                child.castShadow = true;
-                                child.receiveShadow = true;
-                                
-                                // 색상 변경을 위해 모델의 첫 번째 메쉬 재질(Material)을 저장합니다.
-                                if (!bagMaterial) {
-                                    bagMaterial = child.material; 
+                try {
+                    loader.load(
+                        product.path, 
+                        function (gltf) {
+                            bagModel = gltf.scene;
+                            bagModel.scale.set(1, 1, 1); 
+                            bagModel.position.set(0, -0.5, 0); 
+                            bagModel.rotation.y = -Math.PI / 6;
+
+                            bagModel.traverse((child) => {
+                                if (child.isMesh) {
+                                    child.castShadow = true;
+                                    child.receiveShadow = true;
+                                    
+                                    if (!bagMaterial) {
+                                        bagMaterial = child.material; 
+                                        // Apply currently selected color to new model
+                                        bagMaterial.color.setHex(parseInt(currentHexColor.replace('#', '0x')));
+                                    }
                                 }
-                            }
-                        });
+                            });
 
-                        scene.add(bagModel);
-                        spinner.style.display = 'none';
-                    },
-                    undefined,
-                    function (error) {
-                        console.warn('GLB 모델을 불러오는데 실패했습니다. 대체 모델을 렌더링합니다:', error);
-                        createProceduralFallbackBag();
-                    }
-                );
-            } catch (e) {
-                console.warn('미리보기 환경(Blob URL) 지원 문제로 에러가 발생했습니다. 대체 모델을 렌더링합니다:', e);
-                createProceduralFallbackBag();
-            }
+                            scene.add(bagModel);
+                            spinner.style.display = 'none';
+                        },
+                        undefined,
+                        function (error) {
+                            createProceduralFallbackBag(product.type);
+                        }
+                    );
+                } catch (e) {
+                    createProceduralFallbackBag(product.type);
+                }
+            };
+
+            // Setup Carousel Buttons
+            document.getElementById('md-prev').addEventListener('click', () => {
+                currentProductIndex = (currentProductIndex - 1 + mdProducts.length) % mdProducts.length;
+                loadModel(currentProductIndex);
+            });
+            
+            document.getElementById('md-next').addEventListener('click', () => {
+                currentProductIndex = (currentProductIndex + 1) % mdProducts.length;
+                loadModel(currentProductIndex);
+            });
+
+            // Initial Load
+            loadModel(currentProductIndex);
 
             // --- Animation Loop ---
             const animate = function () {
                 requestAnimationFrame(animate);
                 controls.update();
                 
-                // GLTF 모델이 로드된 후에만 둥둥 떠다니는 애니메이션 적용
                 if (bagModel) {
                     bagModel.position.y = Math.sin(Date.now() * 0.001) * 0.05 - 0.5;
                 }
@@ -656,7 +716,6 @@
                 renderer.render(scene, camera);
             };
 
-            // Start animation
             animate();
 
             // --- Window Resize Handling ---
@@ -679,38 +738,31 @@
 
             colorButtons.forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    // Update Active State on UI
                     colorButtons.forEach(b => b.classList.remove('active'));
                     btn.classList.add('active');
 
-                    // Get color hex
-                    const hexColor = btn.getAttribute('data-color');
-                    
-                    // Update Text
-                    colorNameDisplay.textContent = colorNames[hexColor];
+                    currentHexColor = btn.getAttribute('data-color');
+                    colorNameDisplay.textContent = colorNames[currentHexColor];
 
-                    // Animate 3D Material Color Change
-                    const targetColor = new THREE.Color(hexColor);
-                    
-                    // Simple Tweening using requestAnimationFrame
-                    let tweenDuration = 500; // ms
-                    let startTime = Date.now();
-                    const startColor = bagMaterial.color.clone();
+                    if (bagMaterial) {
+                        const targetColor = new THREE.Color(currentHexColor);
+                        let tweenDuration = 500; 
+                        let startTime = Date.now();
+                        const startColor = bagMaterial.color.clone();
 
-                    const changeColor = () => {
-                        let elapsed = Date.now() - startTime;
-                        let progress = Math.min(elapsed / tweenDuration, 1);
-                        
-                        // Ease out cubic
-                        let easeProgress = 1 - Math.pow(1 - progress, 3);
-                        
-                        bagMaterial.color.lerpColors(startColor, targetColor, easeProgress);
+                        const changeColor = () => {
+                            let elapsed = Date.now() - startTime;
+                            let progress = Math.min(elapsed / tweenDuration, 1);
+                            let easeProgress = 1 - Math.pow(1 - progress, 3);
+                            
+                            bagMaterial.color.lerpColors(startColor, targetColor, easeProgress);
 
-                        if (progress < 1) {
-                            requestAnimationFrame(changeColor);
-                        }
-                    };
-                    changeColor();
+                            if (progress < 1) {
+                                requestAnimationFrame(changeColor);
+                            }
+                        };
+                        changeColor();
+                    }
                 });
             });
         };
