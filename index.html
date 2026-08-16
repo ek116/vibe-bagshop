@@ -603,17 +603,16 @@
             };
 
             const loader = new THREE.GLTFLoader();
-            const modelPath = 'assets/tote-bag-3d.glb'; // Replace with your actual file path when ready
+            const modelPath = 'assets/tote-bag-3d.glb'; 
 
-            // Check if model path is a placeholder or load with error handling
-            if (modelPath.includes('assets/tote-bag-3d.glb')) {
-                // Use the procedural fallback immediately so the app runs cleanly without network errors
-                createProceduralFallbackBag();
-            } else {
+            try {
+                // 로컬 경로의 3D 모델을 불러옵니다.
                 loader.load(
                     modelPath, 
                     function (gltf) {
                         bagModel = gltf.scene;
+                        
+                        // 모델의 크기와 위치 설정 (모델 크기에 따라 scale 값을 조절할 수 있습니다)
                         bagModel.scale.set(1, 1, 1); 
                         bagModel.position.set(0, -0.5, 0); 
                         bagModel.rotation.y = -Math.PI / 6;
@@ -622,6 +621,8 @@
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
+                                
+                                // 색상 변경을 위해 모델의 첫 번째 메쉬 재질(Material)을 저장합니다.
                                 if (!bagMaterial) {
                                     bagMaterial = child.material; 
                                 }
@@ -629,15 +630,17 @@
                         });
 
                         scene.add(bagModel);
-                        spinner.style.display.none = true;
                         spinner.style.display = 'none';
                     },
                     undefined,
                     function (error) {
-                        console.warn('GLB load failed, falling back to procedural model:', error);
+                        console.warn('GLB 모델을 불러오는데 실패했습니다. 대체 모델을 렌더링합니다:', error);
                         createProceduralFallbackBag();
                     }
                 );
+            } catch (e) {
+                console.warn('미리보기 환경(Blob URL) 지원 문제로 에러가 발생했습니다. 대체 모델을 렌더링합니다:', e);
+                createProceduralFallbackBag();
             }
 
             // --- Animation Loop ---
