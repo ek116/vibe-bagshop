@@ -214,10 +214,10 @@
                     <div class="w-full lg:w-2/4 bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.05)] overflow-hidden relative group">
                         
                         <!-- 3D Carousel Navigation (Left/Right) -->
-                        <button id="md-prev" class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-[#c5a880] transition-colors z-10 opacity-0 group-hover:opacity-100 group-hover:text-white">
+                        <button id="md-prev" class="absolute left-4 top-1/2 transform -translate-y-1/2 bg-white/90 text-gray-800 p-3 rounded-full shadow-lg hover:bg-[#c5a880] hover:text-white transition-colors z-10 opacity-0 group-hover:opacity-100 border border-gray-100">
                             <i data-lucide="chevron-left" class="w-5 h-5"></i>
                         </button>
-                        <button id="md-next" class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 p-3 rounded-full shadow-lg hover:bg-[#c5a880] transition-colors z-10 opacity-0 group-hover:opacity-100 group-hover:text-white">
+                        <button id="md-next" class="absolute right-4 top-1/2 transform -translate-y-1/2 bg-white/90 text-gray-800 p-3 rounded-full shadow-lg hover:bg-[#c5a880] hover:text-white transition-colors z-10 opacity-0 group-hover:opacity-100 border border-gray-100">
                             <i data-lucide="chevron-right" class="w-5 h-5"></i>
                         </button>
 
@@ -518,9 +518,9 @@
             const scene = new THREE.Scene();
             scene.background = new THREE.Color(0xffffff);
             
-            // Setup Camera
-            const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
-            camera.position.set(0, 1.5, 4);
+            // Setup Camera - 카메라 거리를 살짝 뒤로 물러나게 조정 (Z: 3.0)
+            const camera = new THREE.PerspectiveCamera(40, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 1.2, 3.0);
 
             // Setup Renderer
             const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -530,28 +530,28 @@
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             container.appendChild(renderer.domElement);
 
-            // Controls
+            // Controls - 줌 거리 제한 범위 조정
             const controls = new THREE.OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.dampingFactor = 0.05;
             controls.enablePan = false;
-            controls.minDistance = 2;
-            controls.maxDistance = 6;
+            controls.minDistance = 2.0;
+            controls.maxDistance = 4.5;
             controls.minPolarAngle = Math.PI / 4; 
             controls.maxPolarAngle = Math.PI / 2 + 0.1; 
 
             // Lighting
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
             dirLight.position.set(5, 5, 5);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 1024;
             dirLight.shadow.mapSize.height = 1024;
             scene.add(dirLight);
             
-            const fillLight = new THREE.DirectionalLight(0xebebeb, 0.4);
+            const fillLight = new THREE.DirectionalLight(0xebebeb, 0.5);
             fillLight.position.set(-5, 3, -5);
             scene.add(fillLight);
 
@@ -570,7 +570,6 @@
                 { name: 'Classic Handbag', price: '₩ 750,000', path: 'assets/hand-bag-3d.glb', type: 'handbag' }
             ];
             let currentProductIndex = 0;
-            // Get initial selected color
             let currentHexColor = document.querySelector('.color-btn.active').getAttribute('data-color');
             let bagModel = null;
             let bagMaterial = null;
@@ -579,7 +578,6 @@
             const priceEl = document.getElementById('md-product-price');
             const loader = new THREE.GLTFLoader();
 
-            // Clear previous model from scene
             const clearCurrentModel = () => {
                 if (bagModel) {
                     scene.remove(bagModel);
@@ -588,15 +586,14 @@
                 }
             };
 
-            // Procedural fallback bag (changes shape based on type)
             const createProceduralFallbackBag = (type) => {
                 const group = new THREE.Group();
                 
                 let bodyGeo;
                 if (type === 'handbag') {
-                    bodyGeo = new THREE.BoxGeometry(1.4, 0.8, 0.5); // Wider, shorter
+                    bodyGeo = new THREE.BoxGeometry(1.5, 0.9, 0.55);
                 } else {
-                    bodyGeo = new THREE.BoxGeometry(1.2, 1.0, 0.6); // Tall tote
+                    bodyGeo = new THREE.BoxGeometry(1.3, 1.1, 0.65);
                 }
 
                 const mat = new THREE.MeshStandardMaterial({ 
@@ -627,23 +624,22 @@
                 const claspGeo = new THREE.BoxGeometry(0.2, 0.1, 0.1);
                 const claspMat = new THREE.MeshStandardMaterial({ color: 0xc5a880, metalness: 0.9, roughness: 0.1 });
                 const clasp = new THREE.Mesh(claspGeo, claspMat);
-                clasp.position.set(0, 0, type === 'handbag' ? 0.26 : 0.31);
+                clasp.position.set(0, 0, type === 'handbag' ? 0.31 : 0.36);
                 group.add(clasp);
 
-                group.position.set(0, 0, 0);
+                group.scale.set(1.15, 1.15, 1.15);
+                group.position.set(0, 0.0, 0);
                 scene.add(group);
                 bagModel = group;
                 spinner.style.display = 'none';
             };
 
-            // Load Model function
             const loadModel = (index) => {
                 spinner.style.display = 'block';
                 clearCurrentModel();
 
                 const product = mdProducts[index];
                 
-                // Update UI text smoothly
                 titleEl.style.opacity = 0;
                 priceEl.style.opacity = 0;
                 setTimeout(() => {
@@ -660,8 +656,8 @@
                         product.path, 
                         function (gltf) {
                             bagModel = gltf.scene;
-                            bagModel.scale.set(1, 1, 1); 
-                            bagModel.position.set(0, -0.5, 0); 
+                            bagModel.scale.set(1.15, 1.15, 1.15); 
+                            bagModel.position.set(0, 0.0, 0); 
                             bagModel.rotation.y = -Math.PI / 6;
 
                             bagModel.traverse((child) => {
@@ -671,7 +667,6 @@
                                     
                                     if (!bagMaterial) {
                                         bagMaterial = child.material; 
-                                        // Apply currently selected color to new model
                                         bagMaterial.color.setHex(parseInt(currentHexColor.replace('#', '0x')));
                                     }
                                 }
@@ -690,7 +685,6 @@
                 }
             };
 
-            // Setup Carousel Buttons
             document.getElementById('md-prev').addEventListener('click', () => {
                 currentProductIndex = (currentProductIndex - 1 + mdProducts.length) % mdProducts.length;
                 loadModel(currentProductIndex);
@@ -701,16 +695,14 @@
                 loadModel(currentProductIndex);
             });
 
-            // Initial Load
             loadModel(currentProductIndex);
 
-            // --- Animation Loop ---
             const animate = function () {
                 requestAnimationFrame(animate);
                 controls.update();
                 
                 if (bagModel) {
-                    bagModel.position.y = Math.sin(Date.now() * 0.001) * 0.05 - 0.5;
+                    bagModel.position.y = Math.sin(Date.now() * 0.001) * 0.04 - 0.35;
                 }
 
                 renderer.render(scene, camera);
@@ -718,14 +710,12 @@
 
             animate();
 
-            // --- Window Resize Handling ---
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
             });
 
-            // --- Color Change Logic ---
             const colorButtons = document.querySelectorAll('.color-btn');
             const colorNameDisplay = document.getElementById('color-name');
 
@@ -744,30 +734,34 @@
                     currentHexColor = btn.getAttribute('data-color');
                     colorNameDisplay.textContent = colorNames[currentHexColor];
 
-                    if (bagMaterial) {
-                        const targetColor = new THREE.Color(currentHexColor);
-                        let tweenDuration = 500; 
-                        let startTime = Date.now();
-                        const startColor = bagMaterial.color.clone();
+                    if (bagModel) {
+                        bagModel.traverse((child) => {
+                            if (child.isMesh && child.material) {
+                                const targetColor = new THREE.Color(currentHexColor);
+                                let tweenDuration = 500; 
+                                let startTime = Date.now();
+                                const startColor = child.material.color.clone();
 
-                        const changeColor = () => {
-                            let elapsed = Date.now() - startTime;
-                            let progress = Math.min(elapsed / tweenDuration, 1);
-                            let easeProgress = 1 - Math.pow(1 - progress, 3);
-                            
-                            bagMaterial.color.lerpColors(startColor, targetColor, easeProgress);
+                                const changeColor = () => {
+                                    let elapsed = Date.now() - startTime;
+                                    let progress = Math.min(elapsed / tweenDuration, 1);
+                                    let easeProgress = 1 - Math.pow(1 - progress, 3);
+                                    
+                                    child.material.color.lerpColors(startColor, targetColor, easeProgress);
 
-                            if (progress < 1) {
-                                requestAnimationFrame(changeColor);
+                                    if (progress < 1) {
+                                        requestAnimationFrame(changeColor);
+                                    }
+                                };
+                                changeCardColor = changeColor;
+                                changeColor();
                             }
-                        };
-                        changeColor();
+                        });
                     }
                 });
             });
         };
 
-        // Initialize Three.js after window loads
         window.onload = init3D;
 
     </script>
